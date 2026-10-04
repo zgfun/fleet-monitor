@@ -1,0 +1,20 @@
+{
+  "captchaResult": "CAPTCHA_NOT_NEEDED",
+  "kind": "pagespeedonline#result",
+  "id": "https://site-01.example/",
+  "lighthouseResult": {
+    "requestedUrl": "https://site-01.example/",
+    "finalUrl": "https://site-01.example/",
+    "lighthouseVersion": "12.0.0",
+    "configSettings": { "formFactor": "mobile", "onlyCategories": ["performance"] },
+    "audits": {
+      "largest-contentful-paint": { "id": "largest-contentful-paint", "numericValue": 2412.37, "displayValue": "2.4 s" },
+      "cumulative-layout-shift": { "id": "cumulative-layout-shift", "numericValue": 0.04213, "displayValue": "0.042" },
+      "total-blocking-time": { "id": "total-blocking-time", "numericValue": 187.5, "displayValue": "190 ms" }
+    },
+    "categories": {
+      "performance": { "id": "performance", "title": "Performance", "score": 0.87 }
+    }
+  },
+  "analysisUTCTimestamp": "2026-10-01T06:00:00.000Z"
+}

@@ -25,6 +25,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <body>
+        {/* Keep Provider a direct child of <body>: Emotion's SSR global <style> tags land here and
+            React only skips such unmatched tags while hydrating the body's own children. */}
         <Provider>{children}</Provider>
       </body>
     </html>

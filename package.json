@@ -10,6 +10,7 @@
     "db:local": "tsx scripts/local-db.mts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx scripts/seed.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

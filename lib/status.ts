@@ -17,7 +17,7 @@ export const THRESHOLDS = {
   /** Concurrency for link checks. */
   linkConcurrency: 5,
   /** Delay before the in-run retry of a failed check. */
-  retryDelayMs: Number(process.env.RETRY_DELAY_MS ?? 30_000),
+  retryDelayMs: Number(process.env.RETRY_DELAY_MS ?? 10_000),
 } as const;
 
 /** Only these kinds open incidents and send alerts. The rest show as warnings. */
