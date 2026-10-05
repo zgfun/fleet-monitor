@@ -43,6 +43,14 @@ function slugify(name: string): string {
 async function main() {
   // Imported after dotenv so DATABASE_URL is set when the client is created.
   const { db, sites } = await import("@/db");
+  // --if-empty: used by the Vercel build so sites deleted in the UI don't come back on deploy.
+  if (process.argv.includes("--if-empty")) {
+    const existing = await db.select({ id: sites.id }).from(sites).limit(1);
+    if (existing.length) {
+      console.log("Sites table not empty, skipping seed.");
+      return;
+    }
+  }
   const rows = SEED.map((s) => ({ ...s, publicSlug: slugify(s.name) }));
   const inserted = await db
     .insert(sites)

@@ -7,5 +7,6 @@ export default defineConfig({
   schema: "./db/schema.ts",
   out: "./drizzle",
   dialect: "postgresql",
-  dbCredentials: { url: process.env.DATABASE_URL! },
+  // Neon's pooled URL can't hold the migration lock reliably; prefer the direct one.
+  dbCredentials: { url: (process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL)! },
 });
