@@ -2,17 +2,29 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
-const globalForDb = globalThis as unknown as { pg?: ReturnType<typeof postgres> };
+type Db = ReturnType<typeof drizzle<typeof schema>>;
 
-function client() {
+const globalForDb = globalThis as unknown as { db?: Db };
+
+function create(): Db {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
   // Neon's pooler does not support prepared statements.
-  return postgres(url, { prepare: false, max: 5 });
+  return drizzle(postgres(url, { prepare: false, max: 5 }), { schema });
 }
 
-const pg = globalForDb.pg ?? client();
-if (process.env.NODE_ENV !== "production") globalForDb.pg = pg;
+function instance(): Db {
+  globalForDb.db ??= create();
+  return globalForDb.db;
+}
 
-export const db = drizzle(pg, { schema });
+// Connect on first use, not on import: `next build` evaluates route modules
+// to collect page data, and the build environment has no DATABASE_URL.
+export const db = new Proxy({} as Db, {
+  get(_, prop) {
+    const target = instance();
+    const value = Reflect.get(target, prop, target);
+    return typeof value === "function" ? value.bind(target) : value;
+  },
+});
 export * from "./schema";
