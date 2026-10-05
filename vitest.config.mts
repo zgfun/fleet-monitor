@@ -11,6 +11,7 @@ export default defineConfig({
     environment: "node",
     include: ["**/__tests__/**/*.test.ts", "**/*.test.ts"],
     exclude: ["node_modules/**", ".next/**"],
+    setupFiles: ["./vitest.setup.ts"],
     // DB-backed suites share TEST_DATABASE_URL and read global counts; keep files from interleaving.
     fileParallelism: false,
   },

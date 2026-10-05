@@ -1,6 +1,13 @@
 {
   "name": "fleet-monitor",
   "version": "0.1.0",
+  "description": "Uptime, SSL, broken-link, Lighthouse, noindex and cookie-banner monitor for a fleet of websites",
+  "license": "MIT",
+  "homepage": "https://fleet-monitor-lovat.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zgfun/fleet-monitor"
+  },
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -12,6 +19,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx scripts/seed.ts",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "vercel-build": "drizzle-kit migrate && tsx scripts/seed.ts --if-empty && next build"
   },

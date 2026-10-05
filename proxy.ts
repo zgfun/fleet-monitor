@@ -3,7 +3,7 @@ import { verifySessionFromRequest } from "@/lib/session";
 
 // Only admin routes run through the proxy; /demo, /status, /login, /api/cron and static assets never match.
 export const config = {
-  matcher: ["/", "/sites/:path*", "/api/run", "/api/sites/:path*"],
+  matcher: ["/", "/sites/:path*", "/api/run"],
 };
 
 export async function proxy(request: NextRequest) {

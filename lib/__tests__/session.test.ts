@@ -94,6 +94,19 @@ describe("verifyPassword", () => {
     expect(await verifyPassword("")).toBe(false);
     expect(await verifyPassword("anything")).toBe(false);
   });
+
+  it("refuses the .env.example placeholder and short passwords in production", async () => {
+    vi.stubEnv("SESSION_SECRET", "test-secret-0123456789");
+    vi.stubEnv("NODE_ENV", "production");
+    for (const weak of ["change-me-please", "short-pass"]) {
+      vi.stubEnv("ADMIN_PASSWORD", weak);
+      expect(isAuthConfigured()).toBe(false);
+      expect(await verifyPassword(weak)).toBe(false);
+    }
+    vi.stubEnv("ADMIN_PASSWORD", "a-long-random-production-value");
+    expect(isAuthConfigured()).toBe(true);
+    expect(await verifyPassword("a-long-random-production-value")).toBe(true);
+  });
 });
 
 describe("safeNextPath", () => {

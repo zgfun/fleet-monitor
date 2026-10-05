@@ -16,6 +16,8 @@ export type LoginState = { error: string | null };
 
 const FAILED_LOGIN_DELAY_MS = 500;
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export async function login(_prevState: LoginState, formData: FormData): Promise<LoginState> {
   if (!isAuthConfigured()) {
     return { error: "Admin login is not configured." };
@@ -26,11 +28,14 @@ export async function login(_prevState: LoginState, formData: FormData): Promise
   if (wait > 0) {
     return { error: `Too many failed attempts. Try again in ${Math.ceil(wait / 60_000)} min.` };
   }
+  // Runs before the password check: slows every attempt, the admin's included, instead of locking out.
+  const slowdown = loginLimiter.slowdown();
+  if (slowdown > 0) await sleep(slowdown);
 
   const password = formData.get("password");
   if (typeof password !== "string" || !(await verifyPassword(password))) {
     loginLimiter.fail(ip);
-    await new Promise((resolve) => setTimeout(resolve, FAILED_LOGIN_DELAY_MS));
+    await sleep(FAILED_LOGIN_DELAY_MS);
     return { error: "Incorrect password." };
   }
   loginLimiter.succeed(ip);

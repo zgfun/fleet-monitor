@@ -5,7 +5,8 @@ export const DEFAULT_TIMEOUT_MS = 8_000;
 export function requestInit(timeoutMs: number = DEFAULT_TIMEOUT_MS): RequestInit {
   return {
     method: "GET",
-    redirect: "follow",
+    // Redirects are followed by safeFetch, which checks every hop.
+    redirect: "manual",
     headers: {
       "user-agent": USER_AGENT,
       accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",

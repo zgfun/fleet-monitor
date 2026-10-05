@@ -1,0 +1,10 @@
+# Local-only files that never belong in a CLI deploy
+.pgdata/
+.env*
+!.env.example
+.agents/
+.claude/
+skills-lock.json
+coverage/
+*.tsbuildinfo
+docs/

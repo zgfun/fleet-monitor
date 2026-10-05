@@ -1,4 +1,5 @@
 import { DEFAULT_TIMEOUT_MS, describeError, discardBody, requestInit } from "./fetch";
+import { safeFetch, type Resolve } from "./guard";
 import type { CheckResult, CheckTarget } from "./types";
 
 export type HttpData = {
@@ -10,13 +11,12 @@ export type HttpData = {
 
 export async function checkHttp(
   t: CheckTarget,
-  opts: { fetchImpl?: typeof fetch; timeoutMs?: number } = {},
+  opts: { fetchImpl?: typeof fetch; resolve?: Resolve; timeoutMs?: number } = {},
 ): Promise<CheckResult> {
-  const fetchImpl = opts.fetchImpl ?? fetch;
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const start = performance.now();
   try {
-    const res = await fetchImpl(t.url, requestInit(timeoutMs));
+    const res = await safeFetch(t.url, requestInit(timeoutMs), opts);
     const latency = Math.round(performance.now() - start);
     await discardBody(res);
     // WAFs / bot protection answer 403 or 429 to monitors while the site is fine for humans.

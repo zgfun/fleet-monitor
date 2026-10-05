@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   }
   const parsed = Body.safeParse(json);
   if (!parsed.success) {
-    return Response.json({ error: "Invalid body", issues: parsed.error.issues }, { status: 400 });
+    return Response.json({ error: "Invalid body" }, { status: 400 });
   }
 
   const { siteId } = parsed.data;

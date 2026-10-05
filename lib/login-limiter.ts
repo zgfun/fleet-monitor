@@ -4,12 +4,17 @@
  */
 export const LOGIN_WINDOW_MS = 15 * 60_000;
 export const MAX_FAILURES_PER_IP = 5;
-// Caps attackers rotating IPs. The cost is that the admin may be locked out too during an attack.
-export const MAX_FAILURES_GLOBAL = 30;
+// Attackers rotating IPs are slowed down, never locked out globally: a hard global cap would let
+// anyone lock the admin out with a few wrong passwords.
+export const GLOBAL_SLOWDOWN_AFTER = 30;
+export const GLOBAL_SLOWDOWN_STEP_MS = 250;
+export const MAX_GLOBAL_SLOWDOWN_MS = 5_000;
 
 export type LoginLimiter = {
-  /** Milliseconds until another attempt is allowed, or 0. */
+  /** Milliseconds until this IP may try again, or 0. */
   retryAfter(ip: string, now?: number): number;
+  /** Delay applied to every attempt while many logins are failing across all IPs, or 0. */
+  slowdown(now?: number): number;
   fail(ip: string, now?: number): void;
   succeed(ip: string): void;
 };
@@ -19,23 +24,26 @@ export function createLoginLimiter(): LoginLimiter {
   let global: number[] = [];
 
   const prune = (times: number[], now: number) => times.filter((t) => now - t < LOGIN_WINDOW_MS);
-  const wait = (times: number[], max: number, now: number) =>
-    times.length >= max ? times[times.length - max] + LOGIN_WINDOW_MS - now : 0;
 
   return {
     retryAfter(ip, now = Date.now()) {
-      global = prune(global, now);
       const mine = prune(byIp.get(ip) ?? [], now);
       if (mine.length) byIp.set(ip, mine);
       else byIp.delete(ip);
-      return Math.max(wait(mine, MAX_FAILURES_PER_IP, now), wait(global, MAX_FAILURES_GLOBAL, now), 0);
+      if (mine.length < MAX_FAILURES_PER_IP) return 0;
+      return Math.max(mine[mine.length - MAX_FAILURES_PER_IP] + LOGIN_WINDOW_MS - now, 0);
+    },
+    slowdown(now = Date.now()) {
+      global = prune(global, now);
+      const over = global.length - GLOBAL_SLOWDOWN_AFTER;
+      return over < 0 ? 0 : Math.min((over + 1) * GLOBAL_SLOWDOWN_STEP_MS, MAX_GLOBAL_SLOWDOWN_MS);
     },
     fail(ip, now = Date.now()) {
       if (byIp.size > 1_000) {
         for (const [key, times] of byIp) if (!prune(times, now).length) byIp.delete(key);
       }
       byIp.set(ip, [...(byIp.get(ip) ?? []), now]);
-      global.push(now);
+      global = [...prune(global, now), now];
     },
     succeed(ip) {
       byIp.delete(ip);

@@ -10,8 +10,24 @@ function getSecret(): string | null {
   return secret && secret.length > 0 ? secret : null;
 }
 
+// The placeholder from the public .env.example, and anything short, is refused in production.
+const PLACEHOLDER_PASSWORD = "change-me-please";
+export const MIN_PASSWORD_LENGTH = 12;
+
+function getAdminPassword(): string | null {
+  const password = process.env.ADMIN_PASSWORD;
+  if (!password) return null;
+  if (
+    process.env.NODE_ENV === "production" &&
+    (password === PLACEHOLDER_PASSWORD || password.length < MIN_PASSWORD_LENGTH)
+  ) {
+    return null;
+  }
+  return password;
+}
+
 export function isAuthConfigured(): boolean {
-  return Boolean(getSecret() && process.env.ADMIN_PASSWORD);
+  return Boolean(getSecret() && getAdminPassword());
 }
 
 function toBase64Url(bytes: ArrayBuffer): string {
@@ -105,7 +121,7 @@ async function sha256(value: string): Promise<Uint8Array> {
 
 /** Hashing both sides first gives equal-length inputs, so the compare leaks neither content nor length. */
 export async function verifyPassword(input: string): Promise<boolean> {
-  const expected = process.env.ADMIN_PASSWORD;
+  const expected = getAdminPassword();
   if (!expected) return false;
   const [a, b] = await Promise.all([sha256(input), sha256(expected)]);
   let diff = 0;

@@ -1,5 +1,7 @@
+import net from "node:net";
 import tls from "node:tls";
 import { THRESHOLDS } from "@/lib/status";
+import { BlockedTargetError, isPublicAddress, publicOnlyLookup } from "./guard";
 import type { CheckResult, CheckTarget } from "./types";
 
 export type SslData = {
@@ -33,6 +35,9 @@ export async function checkSsl(
     data: { validTo: null, daysLeft: null, issuer: null, error } satisfies SslData,
   });
 
+  // IP literals skip the lookup below, so they are checked here.
+  if (net.isIP(host) && !isPublicAddress(host)) return fail("blocked: non-public address");
+
   return new Promise<CheckResult>((resolve) => {
     let settled = false;
     let socket: tls.TLSSocket | undefined;
@@ -47,13 +52,16 @@ export async function checkSsl(
 
     try {
       // rejectUnauthorized: false so expired / untrusted certs can still be read; trust is checked below.
-      socket = connect({ host, port, servername: host, rejectUnauthorized: false });
+      // The lookup refuses names that resolve to private addresses.
+      socket = connect({ host, port, servername: host, rejectUnauthorized: false, lookup: publicOnlyLookup });
     } catch (err) {
       finish(fail(err instanceof Error ? err.message : String(err)));
       return;
     }
 
-    socket.once("error", (err: Error & { code?: string }) => finish(fail(err.code ?? err.message)));
+    socket.once("error", (err: Error & { code?: string }) =>
+      finish(fail(err instanceof BlockedTargetError ? err.message : (err.code ?? err.message))),
+    );
     socket.once("secureConnect", () => {
       const latency = Math.round(performance.now() - start);
       const cert = socket!.getPeerCertificate();

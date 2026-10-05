@@ -14,7 +14,7 @@ async function prepare(url: string | undefined): Promise<boolean> {
   if (!url) return false;
   const sql = postgres(url, { max: 1, connect_timeout: 3, onnotice: () => {} });
   try {
-    // Test files run in parallel workers; serialise the migration.
+    // Guard against concurrent migrations (e.g. a watch run alongside pnpm test).
     await sql`select pg_advisory_lock(hashtext('fleet-monitor:test-migrate'))`;
     await migrate(drizzle(sql), { migrationsFolder: "drizzle" });
     return true;

@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  GLOBAL_SLOWDOWN_AFTER,
   LOGIN_WINDOW_MS,
-  MAX_FAILURES_GLOBAL,
   MAX_FAILURES_PER_IP,
+  MAX_GLOBAL_SLOWDOWN_MS,
   clientIp,
   createLoginLimiter,
 } from "@/lib/login-limiter";
@@ -21,10 +22,17 @@ describe("login limiter", () => {
     expect(l.retryAfter("1.1.1.1", T0 + LOGIN_WINDOW_MS)).toBe(0);
   });
 
-  it("caps failures across all IPs", () => {
+  it("slows down, but never locks out, everyone while many IPs are failing", () => {
     const l = createLoginLimiter();
-    for (let i = 0; i < MAX_FAILURES_GLOBAL; i++) l.fail(`10.0.0.${i}`, T0);
-    expect(l.retryAfter("9.9.9.9", T0 + 1)).toBeGreaterThan(0);
+    for (let i = 0; i < GLOBAL_SLOWDOWN_AFTER - 1; i++) l.fail(`10.0.0.${i}`, T0);
+    expect(l.slowdown(T0 + 1)).toBe(0);
+    l.fail("10.0.1.1", T0);
+    expect(l.slowdown(T0 + 1)).toBeGreaterThan(0);
+    for (let i = 0; i < 500; i++) l.fail(`10.1.${i >> 8}.${i & 255}`, T0);
+    expect(l.slowdown(T0 + 1)).toBe(MAX_GLOBAL_SLOWDOWN_MS);
+    // A fresh IP (the admin) is still allowed to try.
+    expect(l.retryAfter("9.9.9.9", T0 + 1)).toBe(0);
+    expect(l.slowdown(T0 + LOGIN_WINDOW_MS)).toBe(0);
   });
 
   it("clears an IP's failures after a successful login", () => {

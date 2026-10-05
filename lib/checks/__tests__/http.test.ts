@@ -13,7 +13,7 @@ describe("checkHttp", () => {
     expect(r.latency_ms).toBeTypeOf("number");
     expect(r.data).toEqual({ status: 200, finalUrl: "https://site-01.example/", blocked: false });
     const init = fetchImpl.calls[0].init!;
-    expect(init.redirect).toBe("follow");
+    expect(init.redirect).toBe("manual");
     expect((init.headers as Record<string, string>)["user-agent"]).toBe(USER_AGENT);
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });

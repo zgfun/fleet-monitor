@@ -4,7 +4,9 @@
 
 Uptime, SSL expiry, broken links, Lighthouse scores, `noindex` and cookie-banner checks for a fleet of websites, with 30 days of history, incidents, email alerts and a public status page per site.
 
-**Live demo:** `/demo` (no login, fake data). **The number:** _"Monitors N sites, runs M checks a day, has logged K incidents and certificate warnings since &lt;date&gt;"_ is computed from the database and shown in the dashboard header.
+**Live:** https://fleet-monitor-lovat.vercel.app · demo (no login, fake data): https://fleet-monitor-lovat.vercel.app/demo
+
+The dashboard header shows how many sites are monitored, how many checks run per day and how many incidents and certificate warnings have been logged since the first check, all computed from the database.
 
 ## Why
 
@@ -38,7 +40,7 @@ Sign in with `ADMIN_PASSWORD`, press **Run checks now**, or trigger the cron rou
 curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron
 ```
 
-Tests: `pnpm test` (Vitest, 170+ tests; the DB-backed suites run when `TEST_DATABASE_URL` points at a throwaway database and are skipped otherwise). Also `pnpm typecheck`, `pnpm lint`.
+Tests: `pnpm test` (Vitest, 200+ tests; the DB-backed suites run when `TEST_DATABASE_URL` points at a throwaway database and are skipped otherwise). Also `pnpm typecheck`, `pnpm lint`.
 
 Optional keys: `RESEND_API_KEY` + `ALERT_FROM` + `ALERT_TO` for alert emails, `PAGESPEED_API_KEY` for Lighthouse scores. Without them those features are skipped and everything else works.
 
@@ -48,7 +50,8 @@ Optional keys: `RESEND_API_KEY` + `ALERT_FROM` + `ALERT_TO` for alert emails, `P
 - **Checks are plain functions** in `lib/checks/*.ts`, each returning `{ ok, latency_ms, data }` and unit-tested against fixtures with injected `fetch`/TLS: HTTP status and response time (GET, not HEAD: some WordPress hosts reject HEAD; 403/429 count as "blocked", not down), SSL expiry and trust via `tls.connect`, same-origin homepage links (max 50, concurrency 5), PageSpeed Insights performance, `noindex` in meta or `X-Robots-Tag`, and known consent tools in the HTML. The homepage is fetched once and shared by the last three.
 - **Scheduling: one Vercel Cron a day** (`0 6 * * *`) calls `/api/cron`, protected by `CRON_SECRET`. PageSpeed runs in its own lane in parallel with the fast checks, and a deadline guard keeps the run inside `maxDuration`. No queue, no Redis.
 - **Incidents without flapping:** a transient HTTP or SSL failure (timeout, 5xx, connection error) is retried once in the same run and only opens an incident if it fails twice in a row. A definitive failure (a 404, a certificate under 14 days) opens one straight away. Recovery closes it. Each open/close is decided under a per-site Postgres advisory lock, so a double-fired cron cannot open duplicates. Resend emails on open and on close.
-- **Auth and public surfaces:** one admin password, an HMAC-signed session cookie checked in `proxy.ts`, and a login rate limiter. `/demo` renders the real dashboard components from a deterministic fake fleet (`site-01.example`...). `/status/[slug]` gets a narrowed view model, so no admin data reaches the public payload.
+- **Auth and public surfaces:** one admin password (refused in production if it is the `.env.example` placeholder or under 12 characters), an HMAC-signed session cookie checked in `proxy.ts`, and a login limiter (per-IP lockout, global slowdown rather than a global lockout). Security headers (`frame-ancestors 'none'`, `nosniff`, referrer and permissions policies) are set in `next.config.ts`.
+- **Outbound guard:** the checks fetch whatever the admin adds, so every request goes through `lib/checks/guard.ts`: names that resolve to loopback, private, link-local, CGNAT or other non-public addresses are refused, redirects are followed manually (max 5 hops) with each hop re-checked, the TLS check uses a lookup that refuses private addresses, and the shared homepage body is capped at 3 MB. `/demo` renders the real dashboard components from a deterministic fake fleet (`site-01.example`...). `/status/[slug]` gets a narrowed view model, so no admin data reaches the public payload.
 
 ## Decisions worth noting
 
@@ -63,3 +66,7 @@ Optional keys: `RESEND_API_KEY` + `ALERT_FROM` + `ALERT_TO` for alert emails, `P
 - Per-site check schedules and maintenance windows.
 - Run PageSpeed from both mobile and desktop strategies and track Core Web Vitals separately.
 - Weekly digest email: new warnings, certificates expiring within 30 days, performance regressions.
+
+## License
+
+MIT, see [LICENSE](LICENSE).

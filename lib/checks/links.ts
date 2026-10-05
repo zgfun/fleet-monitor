@@ -2,6 +2,7 @@ import * as cheerio from "cheerio";
 import pLimit from "p-limit";
 import { THRESHOLDS } from "@/lib/status";
 import { DEFAULT_TIMEOUT_MS, describeError, discardBody, requestInit } from "./fetch";
+import { safeFetch, type Resolve } from "./guard";
 import { fetchHomepage } from "./homepage";
 import type { CheckResult, CheckTarget } from "./types";
 
@@ -45,16 +46,21 @@ export function extractLinks(html: string, baseUrl: string): string[] {
 
 export async function checkLinks(
   t: CheckTarget,
-  opts: { fetchImpl?: typeof fetch; html?: string; baseUrl?: string; timeoutMs?: number } = {},
+  opts: {
+    fetchImpl?: typeof fetch;
+    resolve?: Resolve;
+    html?: string;
+    baseUrl?: string;
+    timeoutMs?: number;
+  } = {},
 ): Promise<CheckResult> {
-  const fetchImpl = opts.fetchImpl ?? fetch;
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const start = performance.now();
 
   let html = opts.html;
   let baseUrl = opts.baseUrl ?? t.url;
   if (html === undefined) {
-    const page = await fetchHomepage(t, { fetchImpl, timeoutMs });
+    const page = await fetchHomepage(t, opts);
     if (!page) {
       const data: LinksData = { total: 0, checked: 0, broken: [], error: "homepage unavailable" };
       return { ok: false, latency_ms: null, data };
@@ -72,7 +78,7 @@ export async function checkLinks(
     toCheck.map((url) =>
       limit(async (): Promise<BrokenLink | null> => {
         try {
-          const res = await fetchImpl(url, requestInit(timeoutMs));
+          const res = await safeFetch(url, requestInit(timeoutMs), opts);
           await discardBody(res);
           if (res.ok || res.status === 403 || res.status === 429) return null;
           return { url, status: res.status };
